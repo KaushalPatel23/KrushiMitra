@@ -1,0 +1,48 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String       @id @default(cuid())
+  name      String
+  email     String       @unique
+  password  String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  analyses  CropAnalysis[]
+}
+
+model CropAnalysis {
+  id             String    @id @default(cuid())
+  imageUrl       String
+  cropName       String
+  healthStatus   String
+  disease        String?
+  confidence     Float
+  fertilizer     String?
+  pesticide      String?
+  recommendation String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  reports        Report[]
+}
+
+model Report {
+  id         String    @id @default(cuid())
+  analysisId String
+  reportUrl  String
+  createdAt  DateTime  @default(now())
+  analysis   CropAnalysis @relation(fields: [analysisId], references: [id])
+}
