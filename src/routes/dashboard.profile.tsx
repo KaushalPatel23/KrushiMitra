@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Reveal } from "@/components/site/Reveal";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard/profile")({
   head: () => ({
@@ -29,6 +30,7 @@ export const Route = createFileRoute("/dashboard/profile")({
 const preferred = ["Tomato", "Wheat", "Cotton", "Onion"];
 
 function ProfilePage() {
+  const { user } = useAuth();
   return (
     <div className="space-y-8">
       <Reveal>
@@ -40,11 +42,18 @@ function ProfilePage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Reveal>
-          <div className="surface-card p-6 text-center">
+            <div className="surface-card p-6 text-center">
             <span className="mx-auto grid h-24 w-24 place-items-center rounded-full bg-gradient-primary font-display text-3xl font-semibold text-primary-foreground shadow-glow">
-              RP
+              {user
+                ? user.name
+                    .split(" ")
+                    .map((p) => p[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()
+                : "--"}
             </span>
-            <p className="mt-5 text-lg font-semibold">Ramesh Patil</p>
+            <p className="mt-5 text-lg font-semibold">{user?.name ?? "Farmer"}</p>
             <p className="mt-1 inline-flex items-center gap-1 text-sm text-muted-foreground">
               <MapPin className="h-3.5 w-3.5" /> Nashik, Maharashtra
             </p>
@@ -62,14 +71,14 @@ function ProfilePage() {
         </Reveal>
 
         <Reveal delay={80} className="lg:col-span-2">
-          <form
+            <form
             className="surface-card grid gap-5 p-6 sm:grid-cols-2"
             onSubmit={(e) => {
               e.preventDefault();
               toast.success("Profile updated");
             }}
           >
-            <Field label="Name" defaultValue="Ramesh Patil" />
+            <Field label="Name" defaultValue={user?.name ?? ""} />
             <Field label="Location" defaultValue="Nashik, Maharashtra" />
             <Field label="Farm Size" defaultValue="12 acres" />
             <Field label="Preferred Crops" defaultValue="Tomato, Wheat, Cotton" />

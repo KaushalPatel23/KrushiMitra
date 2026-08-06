@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth";
 
 const links: { label: string; to: "/" | "/about" | "/contact"; hash?: string }[] =
   [
@@ -24,6 +25,9 @@ export function Navbar() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  const auth = useAuth();
+  const navigate = useNavigate();
 
   return (
     <header
@@ -49,15 +53,36 @@ export function Navbar() {
         </div>
 
         <div className="hidden items-center gap-2 lg:flex">
-          <Button asChild variant="ghost" className="rounded-full">
-            <Link to="/login">Login</Link>
-          </Button>
-          <Button
-            asChild
-            className="rounded-full bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-95"
-          >
-            <Link to="/signup">Get Started</Link>
-          </Button>
+          {auth.user ? (
+            <>
+              <Button asChild variant="ghost" className="rounded-full">
+                <Link to="/dashboard">Dashboard</Link>
+              </Button>
+              <span className="text-sm">Hi, {auth.user.name}</span>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  auth.logout();
+                  navigate({ to: "/" });
+                }}
+                className="rounded-full"
+              >
+                Logout
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button asChild variant="ghost" className="rounded-full">
+                <Link to="/login">Login</Link>
+              </Button>
+              <Button
+                asChild
+                className="rounded-full bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-95"
+              >
+                <Link to="/signup">Get Started</Link>
+              </Button>
+            </>
+          )}
         </div>
 
         <button
@@ -84,19 +109,42 @@ export function Navbar() {
               </Link>
             ))}
             <div className="mt-2 grid grid-cols-2 gap-2">
-              <Button asChild variant="outline" className="rounded-xl">
-                <Link to="/login" onClick={() => setOpen(false)}>
-                  Login
-                </Link>
-              </Button>
-              <Button
-                asChild
-                className="rounded-xl bg-gradient-primary text-primary-foreground"
-              >
-                <Link to="/signup" onClick={() => setOpen(false)}>
-                  Get Started
-                </Link>
-              </Button>
+            {auth.user ? (
+              <>
+                <Button asChild variant="outline" className="rounded-xl">
+                  <Link to="/dashboard" onClick={() => setOpen(false)}>
+                    Dashboard
+                  </Link>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="rounded-xl"
+                  onClick={() => {
+                    auth.logout();
+                    setOpen(false);
+                    navigate({ to: "/" });
+                  }}
+                >
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button asChild variant="outline" className="rounded-xl">
+                  <Link to="/login" onClick={() => setOpen(false)}>
+                    Login
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  className="rounded-xl bg-gradient-primary text-primary-foreground"
+                >
+                  <Link to="/signup" onClick={() => setOpen(false)}>
+                    Get Started
+                  </Link>
+                </Button>
+              </>
+            )}
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const auth = useAuth();
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="hero-glow flex flex-col justify-center px-6 py-14 sm:px-14">
@@ -41,16 +43,26 @@ function LoginPage() {
 
           <form
             className="mt-8 space-y-4"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              toast.success("Signed in");
-              navigate({ to: "/dashboard" });
+              try {
+                const form = e.currentTarget as HTMLFormElement;
+                const data = new FormData(form);
+                const email = (data.get("email") as string) ?? "";
+                const password = (data.get("password") as string) ?? "";
+                await auth.login({ email, password });
+                toast.success("Signed in");
+                navigate({ to: "/dashboard" });
+              } catch (err: any) {
+                toast.error(err.message ?? "Login failed");
+              }
             }}
           >
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
                 required
                 placeholder="you@farm.in"
@@ -61,6 +73,7 @@ function LoginPage() {
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
+                name="password"
                 type="password"
                 required
                 placeholder="••••••••"

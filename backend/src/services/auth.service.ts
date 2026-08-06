@@ -1,6 +1,9 @@
 import { ApiError } from "../utils/apiError.js";
 import { createUser, findUserByEmail } from "../repositories/user.repository.js";
 import type { LoginDto, RegisterDto } from "../types/dto.js";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import { env } from "../config/env.js";
 
 export const registerUser = async (input: RegisterDto) => {
   const existingUser = await findUserByEmail(input.email);
@@ -9,10 +12,12 @@ export const registerUser = async (input: RegisterDto) => {
     throw new ApiError(409, "Email is already registered");
   }
 
+  const hashed = await bcrypt.hash(input.password, 10);
+
   const user = await createUser({
     name: input.name,
     email: input.email,
-    password: `hashed-${input.password}`,
+    password: hashed,
   });
 
   return {
@@ -26,10 +31,19 @@ export const registerUser = async (input: RegisterDto) => {
 
 export const loginUser = async (input: LoginDto) => {
   const user = await findUserByEmail(input.email);
-
-  if (!user || user.password !== `hashed-${input.password}`) {
+  if (!user) {
     throw new ApiError(401, "Invalid credentials");
   }
+
+  const matched = await bcrypt.compare(input.password, user.password);
+
+  if (!matched) {
+    throw new ApiError(401, "Invalid credentials");
+  }
+
+  const token = jwt.sign({ sub: user.id, email: user.email }, env.jwtSecret, {
+    expiresIn: "7d",
+  });
 
   return {
     user: {
@@ -37,6 +51,6 @@ export const loginUser = async (input: LoginDto) => {
       name: user.name,
       email: user.email,
     },
-    accessToken: "jwt-token-placeholder",
+    accessToken: token,
   };
 };

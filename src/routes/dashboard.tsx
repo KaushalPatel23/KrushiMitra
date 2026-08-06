@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   createFileRoute,
   Link,
@@ -19,6 +19,8 @@ import {
 import { Logo } from "@/components/site/Logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth";
+import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/dashboard")({
   component: DashboardLayout,
@@ -36,6 +38,15 @@ const nav = [
 function DashboardLayout() {
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  // Protect route: redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate({ to: "/login" });
+    }
+  }, [loading, user, navigate]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -117,7 +128,14 @@ function DashboardLayout() {
                 <Link to="/">Back to site</Link>
               </Button>
               <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-primary text-sm font-semibold text-primary-foreground">
-                RP
+                {user
+                  ? user.name
+                      .split(" ")
+                      .map((p) => p[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase()
+                  : "--"}
               </span>
             </div>
           </header>

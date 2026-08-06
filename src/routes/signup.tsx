@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +42,7 @@ const fields = [
 
 function SignupPage() {
   const navigate = useNavigate();
+  const auth = useAuth();
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="relative hidden lg:block">
@@ -70,10 +72,29 @@ function SignupPage() {
 
           <form
             className="mt-8 space-y-4"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              toast.success("Account created");
-              navigate({ to: "/dashboard" });
+              try {
+                const form = e.currentTarget as HTMLFormElement;
+                const data = new FormData(form);
+                const name = (data.get("name") as string) ?? "";
+                const email = (data.get("email") as string) ?? "";
+                const password = (data.get("password") as string) ?? "";
+                const confirm = (data.get("confirm") as string) ?? "";
+
+                if (password !== confirm) {
+                  toast.error("Passwords do not match");
+                  return;
+                }
+
+                await auth.register({ name, email, password });
+                // auto-login after register
+                await auth.login({ email, password });
+                toast.success("Account created");
+                navigate({ to: "/dashboard" });
+              } catch (err: any) {
+                toast.error(err.message ?? "Signup failed");
+              }
             }}
           >
             {fields.map((f) => (
@@ -81,6 +102,7 @@ function SignupPage() {
                 <Label htmlFor={f.id}>{f.label}</Label>
                 <Input
                   id={f.id}
+                  name={f.id}
                   type={f.type}
                   required
                   placeholder={f.placeholder}

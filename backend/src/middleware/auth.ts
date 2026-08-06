@@ -1,7 +1,10 @@
 import type { NextFunction, Request, Response } from "express";
 import { ApiError } from "../utils/apiError.js";
+import jwt from "jsonwebtoken";
+import { env } from "../config/env.js";
+import { findUserById } from "../repositories/user.repository.js";
 
-export const authenticateJwt = (
+export const authenticateJwt = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -18,12 +21,23 @@ export const authenticateJwt = (
     return next(new ApiError(401, "Bearer token is missing"));
   }
 
-  // JWT verification is stubbed for now.
-  req.user = {
-    id: "stub-user-id",
-    email: "user@example.com",
-    name: "KrushiMitr User",
-  };
+  try {
+    const payload = jwt.verify(token, env.jwtSecret) as { sub: string; email?: string };
 
-  return next();
+    const user = await findUserById(payload.sub);
+
+    if (!user) {
+      return next(new ApiError(401, "User not found"));
+    }
+
+    req.user = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+    };
+
+    return next();
+  } catch (err) {
+    return next(new ApiError(401, "Invalid or expired token"));
+  }
 };
