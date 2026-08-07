@@ -32,6 +32,8 @@ model CropAnalysis {
   fertilizer     String?
   pesticide      String?
   recommendation String?
+  latitude       Float?
+  longitude      Float?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   userId         String

@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Download, Search } from "lucide-react";
 import { toast } from "sonner";
 
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/select";
 import { Reveal } from "@/components/site/Reveal";
 import { StatusPill } from "@/components/site/StatusPill";
-import { historyItems } from "@/lib/krushi-data";
 
 export const Route = createFileRoute("/dashboard/history")({
   head: () => ({
@@ -35,28 +35,53 @@ export const Route = createFileRoute("/dashboard/history")({
   component: HistoryPage,
 });
 
+type AnalysisRecord = {
+  id: string;
+  cropName: string;
+  disease?: string | null;
+  healthStatus: string;
+  confidence: number;
+  createdAt: string;
+};
+
 function HistoryPage() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [sort, setSort] = useState("newest");
+  const [rows, setRows] = useState<AnalysisRecord[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const rows = useMemo(() => {
-    let list = historyItems.filter(
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await api.get("/analysis");
+        setRows(res.data ?? []);
+      } catch (error: any) {
+        toast.error(error.message || "Could not load analyses.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const filteredRows = useMemo(() => {
+    let list = rows.filter(
       (h) =>
-        (status === "all" || h.status === status) &&
-        (h.crop.toLowerCase().includes(query.toLowerCase()) ||
-          h.disease.toLowerCase().includes(query.toLowerCase()) ||
+        (status === "all" || h.healthStatus === status) &&
+        (h.cropName.toLowerCase().includes(query.toLowerCase()) ||
+          (h.disease ?? "").toLowerCase().includes(query.toLowerCase()) ||
           h.id.toLowerCase().includes(query.toLowerCase())),
     );
     list = [...list].sort((a, b) =>
       sort === "newest"
-        ? b.date.localeCompare(a.date)
+        ? b.createdAt.localeCompare(a.createdAt)
         : sort === "oldest"
-          ? a.date.localeCompare(b.date)
-          : b.score - a.score,
+          ? a.createdAt.localeCompare(b.createdAt)
+          : b.confidence - a.confidence,
     );
     return list;
-  }, [query, status, sort]);
+  }, [query, status, sort, rows]);
 
   return (
     <div className="space-y-8">
@@ -104,38 +129,43 @@ function HistoryPage() {
 
       <div className="relative space-y-4 pl-6">
         <span className="absolute left-1.5 top-2 h-[calc(100%-1rem)] w-px bg-border" />
-        {rows.map((h, i) => (
-          <Reveal key={h.id} delay={i * 60}>
-            <div className="relative">
-              <span className="absolute -left-[1.35rem] top-7 h-3 w-3 rounded-full border-2 border-background bg-gradient-primary" />
-              <div className="surface-card lift-hover flex flex-wrap items-center justify-between gap-4 p-5">
-                <div>
-                  <p className="text-xs text-muted-foreground">
-                    {h.date} · {h.id}
-                  </p>
-                  <p className="mt-1 font-medium">
-                    {h.crop} — {h.disease}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Health score {h.score}/100
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <StatusPill status={h.status} />
-                  <Button
-                    variant="outline"
-                    className="rounded-full bg-card"
-                    onClick={() => toast.success(`Report ${h.id} downloaded`)}
-                  >
-                    <Download className="mr-1 h-4 w-4" /> Report
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </Reveal>
-        ))}
-        {rows.length === 0 && (
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading analyses…</p>
+        ) : filteredRows.length === 0 ? (
           <p className="text-sm text-muted-foreground">No analyses found.</p>
+        ) : (
+          <div className="space-y-4">
+            {filteredRows.map((h, i) => (
+              <Reveal key={h.id} delay={i * 60}>
+                <div className="relative">
+                  <span className="absolute -left-[1.35rem] top-7 h-3 w-3 rounded-full border-2 border-background bg-gradient-primary" />
+                  <div className="surface-card lift-hover flex flex-wrap items-center justify-between gap-4 p-5">
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        {h.createdAt} · {h.id}
+                      </p>
+                      <p className="mt-1 font-medium">
+                        {h.cropName} — {h.disease ?? "Unknown"}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Confidence {Math.round(h.confidence)}%
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <StatusPill status={h.healthStatus} />
+                      <Button
+                        variant="outline"
+                        className="rounded-full bg-card"
+                        onClick={() => toast.success(`Report ${h.id} downloaded`)}
+                      >
+                        <Download className="mr-1 h-4 w-4" /> Report
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
         )}
       </div>
     </div>

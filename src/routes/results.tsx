@@ -1,56 +1,51 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  AlertTriangle,
-  Download,
-  Droplets,
-  FlaskConical,
-  Leaf,
-  RefreshCw,
-  ShieldCheck,
-  Timer,
-} from "lucide-react";
-import {
-  PolarAngleAxis,
-  RadialBar,
-  RadialBarChart,
-  ResponsiveContainer,
-} from "recharts";
+import { Download, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { useUserLocation } from "@/lib/location";
 
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { Reveal } from "@/components/site/Reveal";
-import { sampleResult } from "@/lib/krushi-data";
 
 export const Route = createFileRoute("/results")({
   head: () => ({
     meta: [
-      { title: "Crop Analysis Report | KrushiMitr" },
+      { title: "Crop Upload Complete | KrushiMitr" },
       {
         name: "description",
         content:
-          "Disease, confidence, severity, nutrient status and fertilizer plan for your analyzed crop photo.",
+          "Your crop image has been uploaded. Analysis is pending and will appear once the model is ready.",
       },
-      { property: "og:title", content: "Crop Analysis Report — KrushiMitr" },
+      { property: "og:title", content: "Crop Upload Complete — KrushiMitr" },
       {
         property: "og:description",
-        content: "Your AI crop diagnosis and treatment plan.",
+        content: "Your crop image has been stored and analysis is pending.",
       },
     ],
   }),
   component: ResultsPage,
 });
 
-const r = sampleResult;
-
 function ResultsPage() {
   const [image, setImage] = useState<string | null>(null);
+  const [cropName, setCropName] = useState<string | null>(null);
+  const [analysisObj, setAnalysisObj] = useState<any | null>(null);
+  const { locationLabel, status } = useUserLocation({ autoRequest: true, reason: "to show the location of this analysis" });
 
   useEffect(() => {
     try {
-      setImage(sessionStorage.getItem("krushimitr:image"));
+      const imageData = sessionStorage.getItem("krushimitr:image");
+      const analysis = sessionStorage.getItem("krushimitr:analysis");
+
+      if (analysis) {
+        const parsed = JSON.parse(analysis) as any;
+        setAnalysisObj(parsed ?? null);
+        setCropName(parsed?.cropName ?? null);
+        setImage(imageData ?? parsed?.imageUrl ?? null);
+      } else {
+        setImage(imageData);
+      }
     } catch {
       /* ignore */
     }
@@ -58,30 +53,25 @@ function ResultsPage() {
 
   const downloadReport = () => {
     const lines = [
-      "KrushiMitr — Crop Analysis Report",
+      "KrushiMitr � Crop Upload Report",
       "==================================",
-      `Crop: ${r.crop}`,
-      `Health status: ${r.healthStatus}`,
-      `Disease: ${r.disease}`,
-      `Confidence: ${r.confidence}%`,
-      `Severity: ${r.severity}`,
-      `Crop health score: ${r.healthScore}/100`,
-      `Nutrient deficiency: ${r.nutrientDeficiency}`,
-      `Recommended fertilizer: ${r.fertilizer}`,
-      `Organic solution: ${r.organicSolution}`,
-      `Recommended pesticide: ${r.pesticide}`,
-      `Water requirement: ${r.water}`,
-      `Recovery time: ${r.recovery}`,
+      `Crop: ${cropName ?? "Unknown"}`,
+      `Health status: ${analysisObj?.healthStatus ?? "Pending"}`,
+      `Disease: ${analysisObj?.disease ?? "Pending analysis"}`,
+      `Confidence: ${Math.round(analysisObj?.confidence ?? 0)}%`,
+      `Location: ${analysisObj?.location ?? (status === "success" ? locationLabel : "Location unavailable")}`,
+      "Severity: Pending",
       "",
-      "Prevention tips:",
-      ...r.preventionTips.map((t) => `- ${t}`),
+      "Your crop photo has been uploaded successfully.",
+      "Analysis results will appear once the model has processed your image.",
     ].join("\n");
+
     const url = URL.createObjectURL(
       new Blob([lines], { type: "text/plain;charset=utf-8" }),
     );
     const a = document.createElement("a");
     a.href = url;
-    a.download = "krushimitr-report.txt";
+    a.download = "krushimitr-upload-report.txt";
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Report downloaded");
@@ -90,14 +80,14 @@ function ResultsPage() {
   return (
     <SiteLayout>
       <section className="hero-glow">
-        <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8 sm:py-20">
+        <div className="mx-auto max-w-5xl px-5 py-14 sm:px-8 sm:py-20">
           <Reveal className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-widest text-primary">
-                Analysis complete
+                Upload complete
               </p>
               <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">
-                {r.crop} · {r.disease.split(" (")[0]}
+                {cropName ?? "Crop"} image saved
               </h1>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -109,159 +99,55 @@ function ResultsPage() {
               </Button>
               <Button asChild variant="outline" className="rounded-full bg-card">
                 <Link to="/upload">
-                  <RefreshCw className="mr-1 h-4 w-4" /> Analyze Another Crop
+                  <RefreshCw className="mr-1 h-4 w-4" /> Upload Another Crop
                 </Link>
               </Button>
             </div>
           </Reveal>
 
-          <div className="mt-10 grid gap-6 lg:grid-cols-3">
-            <Reveal className="lg:col-span-1">
+          <div className="mt-10 grid gap-6 lg:grid-cols-[360px_1fr]">
+            <Reveal>
               <div className="surface-card overflow-hidden">
                 <div className="aspect-square w-full overflow-hidden bg-secondary">
                   {image ? (
                     <img
                       src={image}
-                      alt="Analyzed crop"
+                      alt="Submitted crop"
                       className="h-full w-full object-cover"
                     />
                   ) : (
                     <div className="grid h-full place-items-center text-sm text-muted-foreground">
-                      No image
+                      No image available
                     </div>
                   )}
-                </div>
-                <div className="space-y-3 p-6">
-                  <Row label="Crop" value={r.crop} />
-                  <Row
-                    label="Health status"
-                    value={
-                      <span className="rounded-full bg-danger/10 px-3 py-1 text-xs font-semibold text-danger">
-                        {r.healthStatus}
-                      </span>
-                    }
-                  />
-                  <Row
-                    label="Severity"
-                    value={
-                      <span className="rounded-full bg-warning/15 px-3 py-1 text-xs font-semibold text-warning-foreground">
-                        {r.severity}
-                      </span>
-                    }
-                  />
-                  <Row label="Confidence" value={`${r.confidence}%`} />
                 </div>
               </div>
             </Reveal>
 
-            <Reveal delay={90} className="lg:col-span-2">
-              <div className="grid h-full gap-6 sm:grid-cols-2">
-                <div className="surface-card flex flex-col p-6">
-                  <p className="text-sm font-semibold">Crop Health Score</p>
-                  <div className="relative mt-4 h-52 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RadialBarChart
-                        innerRadius="72%"
-                        outerRadius="100%"
-                        data={[{ name: "score", value: r.healthScore }]}
-                        startAngle={90}
-                        endAngle={-270}
-                      >
-                        <PolarAngleAxis
-                          type="number"
-                          domain={[0, 100]}
-                          tick={false}
-                        />
-                        <RadialBar
-                          dataKey="value"
-                          cornerRadius={20}
-                          fill="var(--warning)"
-                          background={{ fill: "var(--secondary)" }}
-                        />
-                      </RadialBarChart>
-                    </ResponsiveContainer>
-                    <div className="pointer-events-none absolute inset-0 grid place-items-center">
-                      <p className="font-display text-4xl font-semibold">
-                        {r.healthScore}
-                        <span className="text-base text-muted-foreground">
-                          /100
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                  <p className="mt-4 text-center text-xs text-muted-foreground">
-                    Needs attention — treat within 3 days
+            <Reveal delay={90}>
+              <div className="surface-card p-6">
+                <p className="text-sm font-semibold uppercase tracking-widest text-primary">
+                  Analysis uploaded
+                </p>
+                <h2 className="mt-3 text-2xl font-semibold">
+                  {cropName ?? "Crop"} analysis details
+                </h2>
+                <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
+                  Your photo, selected crop, and location are now attached to the analysis record and can be reviewed from your dashboard.
+                </p>
+                <div className="mt-6 space-y-3 rounded-3xl border border-border bg-secondary p-4 text-sm text-muted-foreground">
+                  <p>
+                    Crop: <span className="font-semibold text-foreground">{analysisObj?.cropName ?? cropName ?? "Not selected"}</span>
                   </p>
-                </div>
-
-                <div className="surface-card p-6">
-                  <p className="text-sm font-semibold">Nutrient Levels</p>
-                  <div className="mt-5 space-y-4">
-                    {r.nutrients.map((n) => (
-                      <div key={n.name}>
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">
-                            {n.name}
-                          </span>
-                          <span
-                            className={
-                              n.level < 50
-                                ? "text-danger"
-                                : n.level < 70
-                                  ? "text-warning-foreground"
-                                  : "text-primary"
-                            }
-                          >
-                            {n.level}%
-                          </span>
-                        </div>
-                        <Progress value={n.level} className="mt-2 h-2" />
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-5 rounded-xl bg-danger/8 px-3 py-2 text-xs text-danger">
-                    Deficiency detected: {r.nutrientDeficiency}
+                  <p>
+                    Status: <span className="font-semibold text-foreground">{analysisObj?.healthStatus ?? "Pending"}</span>
                   </p>
-                </div>
-
-                <InfoCard
-                  icon={FlaskConical}
-                  title="Recommended Fertilizer"
-                  body={r.fertilizer}
-                />
-                <InfoCard
-                  icon={Leaf}
-                  title="Organic Solution"
-                  body={r.organicSolution}
-                />
-                <InfoCard
-                  icon={AlertTriangle}
-                  title="Recommended Pesticide"
-                  body={r.pesticide}
-                />
-                <InfoCard
-                  icon={Droplets}
-                  title="Water Requirement"
-                  body={r.water}
-                />
-                <InfoCard
-                  icon={Timer}
-                  title="Recovery Time"
-                  body={r.recovery}
-                />
-                <div className="surface-card p-6">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4 text-primary" />
-                    <p className="text-sm font-semibold">Prevention Tips</p>
-                  </div>
-                  <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                    {r.preventionTips.map((t) => (
-                      <li key={t} className="flex gap-2">
-                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                        {t}
-                      </li>
-                    ))}
-                  </ul>
+                  <p>
+                    Confidence: <span className="font-semibold text-foreground">{Math.round(analysisObj?.confidence ?? 0)}%</span>
+                  </p>
+                  <p>
+                    Location: <span className="font-semibold text-foreground">{analysisObj?.location ?? (status === "success" ? locationLabel : "Location unavailable")}</span>
+                  </p>
                 </div>
               </div>
             </Reveal>
@@ -269,42 +155,5 @@ function ResultsPage() {
         </div>
       </section>
     </SiteLayout>
-  );
-}
-
-function Row({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium">{value}</span>
-    </div>
-  );
-}
-
-function InfoCard({
-  icon: Icon,
-  title,
-  body,
-}: {
-  icon: React.ElementType;
-  title: string;
-  body: string;
-}) {
-  return (
-    <div className="surface-card lift-hover p-6">
-      <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary-tint text-primary">
-        <Icon className="h-4 w-4" />
-      </span>
-      <p className="mt-4 text-sm font-semibold">{title}</p>
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        {body}
-      </p>
-    </div>
   );
 }

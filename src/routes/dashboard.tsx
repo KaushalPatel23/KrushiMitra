@@ -5,6 +5,7 @@ import {
   Outlet,
   useRouterState,
 } from "@tanstack/react-router";
+import { useUserLocation } from "@/lib/location";
 import {
   FileText,
   Gauge,
@@ -40,6 +41,7 @@ function DashboardLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const { locationLabel, status } = useUserLocation({ autoRequest: true, reason: "to show your current location in the dashboard" });
 
   // Protect route: redirect to login if not authenticated
   useEffect(() => {
@@ -121,7 +123,7 @@ function DashboardLayout() {
               <Menu className="h-5 w-5" />
             </button>
             <p className="hidden text-sm text-muted-foreground lg:block">
-              Rabi season · Nashik, Maharashtra
+              {status === "success" ? `Rabi season · ${locationLabel}` : "Rabi season · Location unavailable"}
             </p>
             <div className="flex items-center gap-3">
               <Button asChild variant="outline" className="rounded-full bg-card">

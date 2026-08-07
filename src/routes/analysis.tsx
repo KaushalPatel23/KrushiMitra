@@ -28,12 +28,24 @@ export const Route = createFileRoute("/analysis")({
 function AnalysisPage() {
   const navigate = useNavigate();
   const [image, setImage] = useState<string | null>(null);
+  const [cropName, setCropName] = useState<string | null>(null);
   const [stage, setStage] = useState(0);
   const [progress, setProgress] = useState(4);
 
   useEffect(() => {
     try {
-      setImage(sessionStorage.getItem("krushimitr:image"));
+      const imageData = sessionStorage.getItem("krushimitr:image");
+      const analysis = sessionStorage.getItem("krushimitr:analysis");
+      if (analysis) {
+        const parsed = JSON.parse(analysis) as {
+          cropName?: string;
+          imageUrl?: string;
+        };
+        setCropName(parsed.cropName ?? null);
+        setImage(imageData ?? parsed.imageUrl ?? null);
+      } else {
+        setImage(imageData);
+      }
     } catch {
       /* ignore */
     }
@@ -83,6 +95,14 @@ function AnalysisPage() {
           </div>
 
           <div>
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <p className="text-sm font-semibold uppercase tracking-widest text-primary">
+                Analysis in progress
+              </p>
+              <span className="rounded-full bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
+                Crop: {cropName ?? "Unknown"}
+              </span>
+            </div>
             <h1 className="text-3xl font-semibold sm:text-4xl">
               Analyzing your crop
             </h1>

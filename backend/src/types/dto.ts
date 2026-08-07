@@ -12,12 +12,14 @@ export interface LoginDto {
 export interface AnalysisCreateDto {
   imageUrl: string;
   cropName: string;
-  healthStatus: string;
+  healthStatus?: string;
   disease?: string;
-  confidence: number;
+  confidence?: number;
   fertilizer?: string;
   pesticide?: string;
   recommendation?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface UserProfileDto {

@@ -1,4 +1,8 @@
+import fs from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
 import type { Request, Response, NextFunction } from "express";
+import { ApiError } from "../utils/apiError.js";
 import { createdResponse, successResponse } from "../utils/apiResponse.js";
 import {
   createCropAnalysis,
@@ -6,6 +10,8 @@ import {
   listCropAnalyses,
   removeCropAnalysis,
 } from "../services/analysis.service.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const createAnalysisController = async (
   req: Request,
@@ -16,12 +22,53 @@ export const createAnalysisController = async (
     const userId = req.user?.id;
 
     if (!userId) {
-      throw new Error("Authenticated user ID is missing");
+      throw new ApiError(401, "Authenticated user ID is missing");
     }
 
-    const analysis = await createCropAnalysis(req.body, userId);
+    const file = req.file;
+    const cropName = String(req.body.cropName ?? "").trim();
+    const latitude = req.body.latitude != null ? Number(req.body.latitude) : null;
+    const longitude = req.body.longitude != null ? Number(req.body.longitude) : null;
 
-    return createdResponse(res, analysis, "Analysis created successfully");
+    if (!file) {
+      throw new ApiError(400, "Image is required");
+    }
+
+    if (!cropName) {
+      throw new ApiError(400, "cropName is required");
+    }
+
+    const uploadDir = path.join(__dirname, "../storage/uploads");
+    await fs.mkdir(uploadDir, { recursive: true });
+
+    const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+    const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+    const uploadPath = path.join(uploadDir, filename);
+    await fs.writeFile(uploadPath, file.buffer);
+
+    const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${filename}`;
+
+    const analysis = await createCropAnalysis(
+      {
+        imageUrl,
+        cropName,
+        healthStatus: "Pending",
+        confidence: 0,
+        latitude: Number.isFinite(latitude) ? latitude : null,
+        longitude: Number.isFinite(longitude) ? longitude : null,
+      },
+      userId,
+    );
+
+    return createdResponse(
+      res,
+      {
+        analysisId: analysis.id,
+        cropName: analysis.cropName,
+        imageUrl: analysis.imageUrl,
+      },
+      "Analysis created successfully",
+    );
   } catch (error) {
     return next(error);
   }

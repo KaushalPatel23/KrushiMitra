@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { MapPin, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { useUserLocation } from "@/lib/location";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ const preferred = ["Tomato", "Wheat", "Cotton", "Onion"];
 
 function ProfilePage() {
   const { user } = useAuth();
+  const { locationLabel, status } = useUserLocation({ autoRequest: true, reason: "to show your current location in your profile" });
   return (
     <div className="space-y-8">
       <Reveal>
@@ -55,7 +57,7 @@ function ProfilePage() {
             </span>
             <p className="mt-5 text-lg font-semibold">{user?.name ?? "Farmer"}</p>
             <p className="mt-1 inline-flex items-center gap-1 text-sm text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5" /> Nashik, Maharashtra
+              <MapPin className="h-3.5 w-3.5" /> {status === "success" ? locationLabel : "Location unavailable"}
             </p>
             <div className="mt-5 flex flex-wrap justify-center gap-2">
               {preferred.map((c) => (
@@ -79,7 +81,7 @@ function ProfilePage() {
             }}
           >
             <Field label="Name" defaultValue={user?.name ?? ""} />
-            <Field label="Location" defaultValue="Nashik, Maharashtra" />
+            <Field label="Location" defaultValue={status === "success" ? locationLabel : "Location unavailable"} />
             <Field label="Farm Size" defaultValue="12 acres" />
             <Field label="Preferred Crops" defaultValue="Tomato, Wheat, Cotton" />
             <Field label="Language" defaultValue="Marathi" />

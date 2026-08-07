@@ -10,12 +10,14 @@ export const createAnalysis = async (
     data: {
       imageUrl: data.imageUrl,
       cropName: data.cropName,
-      healthStatus: data.healthStatus,
+      healthStatus: data.healthStatus ?? "Pending",
       disease: data.disease ?? null,
-      confidence: data.confidence,
+      confidence: data.confidence ?? 0,
       fertilizer: data.fertilizer ?? null,
       pesticide: data.pesticide ?? null,
       recommendation: data.recommendation ?? null,
+      latitude: data.latitude ?? null,
+      longitude: data.longitude ?? null,
       userId,
     },
   });
